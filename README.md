@@ -12,6 +12,8 @@ If this code is helpful in your research, please cite the following publication
 - We use the dataset created by Zubiaga et al, 2017 which can be downloaded from [here](https://figshare.com/articles/PHEME_dataset_of_rumours_and_non-rumours/4010619). 
 
 
+Edit:  Dataset can be downloaded from: 
+
 ### POS TAGGING
 
 - Use [GATE Twitter Part-of-Speech Tagger](https://gate.ac.uk/wiki/twitter-postagger.html)
