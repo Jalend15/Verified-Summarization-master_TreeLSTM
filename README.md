@@ -1,124 +1,172 @@
+# Verified Summarization
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Lesser General Public License as 
-    published by the Free Software Foundation, either version 3 of the 
-    License, or (at your option) any later version.
+If this code is helpful in your research, please cite the following publication
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Lesser General Public License for more details.
-
-    You should have received a copy of the GNU Lesser General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+> Ashish Sharma, Koustav Rudra, and Niloy Ganguly. "Going Beyond Content Richness: Verified Information Aware Summarization of Crisis-Related Microblogs." Proceedings of the 28th ACM International Conference on Information and Knowledge Management. ACM CIKM, 2019.
 
 
-============================================================================
+## Initial Steps
 
-GATE Twitter PoS tagger
- http://www.gate.ac.uk
+### Dataset
 
-Copyright (c) 2012-2013, The University of Sheffield
-
-
-====== Usage (requires Java 1.6.0 or above): ===============================
+- We use the dataset created by Zubiaga et al, 2017 which can be downloaded from [here](https://figshare.com/articles/PHEME_dataset_of_rumours_and_non-rumours/4010619). 
 
 
-  java -jar twitie_tag.jar <path to model file> <path to input file>
+### POS TAGGING
+
+- Use [GATE Twitter Part-of-Speech Tagger](https://gate.ac.uk/wiki/twitter-postagger.html)
+
+- Command: 
+
+```
+$ java -jar twitie_tag.jar models/gate-EN-twitter.model $input_file > $output_file
+```
+
+- **$input_file**: File with each line containing a tweet (only text - space separated words) 
+- **$output_file**: space separated <word>_<TAG> for each tweet
 
 
-The model file is any valid Stanford Tagger model file. The input file
-should contain one plaintext tweet per line, with spaces separating
-tokens. 
+### Processing Corpus File 
 
-To run the tagger using the best model reported in the paper, do:
+Command:
+```
+$ python create-corpus-file.py
+```
 
+Configure the following input variables inside the code:
 
-  java -jar twitie_tag.jar models/gate-EN-twitter.model <input file>
-
-
-Tagged tokens are output on stdout; status information on stderr.
-This means that if you want to save the output, simply redirect stdout;
-
-
-  java -jar twitie_tag.jar <path to model file>  \
-    <path to input file>  >  <output file>
-
-
-For example:
+- **src_data_path**: Folder containing files of Source Tweets. In every file, a line contains - DateTime, TweetId, UserId, Tweet Text, Rumor Tag (tab-separated)
+- **rep_data_path**: Folder containing files of Reply Tweets. In every file, a line contains - DateTime, TweetId, UserId, Tweet Text, Source Tweet Id (tab-separated)
+- **src_pos_tag_path**: Folder containing Source POS Tags files. In every file, a line contains - TweetId, Output of Twitie (space separated <word>_<TAG>) (space-separated)
+- **rep_pos_tag_path**: Folder containing Reply POS Tags files. In every file, a line contains - TweetId, Output of Twitie (space separated <word>_<TAG>) (space-separated)
+- **tentative_path**: File containing LIWC list of tentative words
+- **certain_path**: File containing LIWC list of certainty words
+- **negate_path**: File containing LIWC list of negative words
+- **question_path**: File containing list of question words
 
 
-  java -jar twitie_tag.jar vcboot.1543K-twitter.model \
-    corpora/ritter_dev.nolabels > ritter_dev.tagged
+Configure the following output variables inside the code:
+
+- **corpus_path**: Corpus file (will be input to the topic model). Each line in the file contains: TweetId, Content-Words (space-separated), Expression-Words(Space-Separated), TweetType(S/R), Time(0-1)
 
 
-There is a known "InvocationTargetException" problem when using Apple's
-own Java distribution; using the OpenJDK JRE can remedy this.
+## Content-Expression Topic Model (CETM)
+
+Compile:
+
+```
+$ g++ -std=c++11 topic-model.cpp -o model
+```
+
+Run:
+
+```
+$ ./model K T iter
+```
+where:
+
+```
+K:    Number of Content Word Topics
+T:    Number of Expression Word Topics
+iter: Number of iterations to run the model for
+```
+
+Configure the following input variables inside the code:
+
+- **corpus_path**: Corpus file created in the previous step (preprocessing corpus file).
+
+Configure the following output variables inside the code:
+
+- **destpath**: Folder where all the output files will be stored
 
 
-====== Archive contents: ===================================================
+Description of files inside the destination folder is as follows:
 
-models/  contains model files for the Stanford tagger and our modified 
-         version. Included are:
-
-models/gate-EN-twitter.model       - our final vote-constrained 
-                                     bootstrapped model with unknown 
-                                     word handling.
-models/gate-EN-twitter-fast.model       - a high-speed model (lower accuracy).
-
-corpora/  contains various training and evaluation corpora. The 
-          ".nolabels" suffix is used for tokenised, unlabeled files.
-
-corpora/ritter_*                   - the T-Pos corpora T-train, 
-                                     T-dev and T-eval.
-corpora/foster_*                   - the DCU corpora D-dev and D-eval.
-
-
-Generated taggings may be evaluated against the supplied gold standard
-files using the included eval.py script (requires NLTK, Python 2.7)
+- **c-vocab-mapping.txt**: Content words to indices mapping.
+- **e-vocab-mapping.txt**: Expression words to indices mapping.
+- **behavior-mapping.txt**: Tweet Type to indices mapping. 
+- **topic-priors.txt**: Prior probability of content topics.
+- **expression-priors.txt**: Prior probability of expression topics.
+- **c-topic-word-distribution.txt**: Content Topic to Word Distribution.
+- **e-topic-word-distribution.txt**: Expression Topic to Word Distribution.
+- **topic-behavior-distribution.txt**: Topic to Behavior Distribution.
+- **table-assignment-status.txt**: Status of Data points seating.
+- **top-c-topic-words.txt**: Top 20 words in each content-word topic.
+- **top-e-topic-words.txt**: Top 20 words in each expression-word topic.
+- **e-topic-time-alpha.txt**: Expression-Topic-Time Alpha values.
+- **e-topic-time-beta.txt**: Expression-Topic-Time Beta values.
+- **c-topic-time-alpha.txt**: Content-Topic-Time Alpha values.
+- **c-topic-time-beta.txt**: Content-Topic-Time Beta values.
 
 
-====== Support: ============================================================
+## Computing Tweet Posteriors
 
-Support is available from the author, leon@dcs.shef.ac.uk, and via the GATE
-user mailing list:
+Command:
 
-  https://lists.sourceforge.net/lists/listinfo/gate-users
+```
+$ python compute-posteriors.py
+```
 
 
-====== Citing the tagger: ==================================================
+Configure the following input variables inside the code:
 
-Please acknowledge the tagger if you use it in your work.
+- **basepath**: Folder created by topic-model.cpp
+- **CORPUS_PATH**: Corpus file created.
 
- L. Derczynski, A. Ritter, S. Clark, and K. Bontcheva, 2013: "Twitter 
-  Part-of-Speech Tagging for All: Overcoming Sparse and Noisy Data". In:
-  Proceedings of the International Conference on Recent Advances in Natural
-  Language Processing.
+Configure the following output variables inside the code:
 
-====== To replicate the final result: ======================================
+- **POSTERIOR_PATH**: File where posteriors (probability vectors) for each tweet will be stored. 
 
-Option A:
+## Verified Tweet Detection using Tree LSTM
 
- Run show-result.bat or show-result.sh
+### Generating Trees
 
-Option B:
+Command:
 
- java -jar twitie_tag.jar models/show-result.model corpora/ritter_eval.nolabels > t_eval.vcb-labelled 
+```
+$ python generate-trees.py
+```
 
- python eval.py corpora/ritter_eval.stanford t_eval.vcb-labelled
+Configure the following input variables inside the code:
 
-These are the evaluations on the full vote-constrained bootstrapped 
-model, that gave the final results on the held-out Ritter/T-Pos eval
-corpus. The top result on the dev corpus came using slightly less 
-than all the data; the responsible model is not included here for 
-space reasons. 
+- **datapath**: The original dataset folder (download from [here](https://figshare.com/articles/PHEME_dataset_of_rumours_and_non-rumours/4010619)) 
+- **feature_path**: File containing input feature vectors for all tweets in the dataset. The file contains two tab-separated columns - tweet_id, features
+- **output_path**: Path of the folder where you want the generated trees to be stored
 
-It was sampled at after 1 319 006 tokens of data (e.g. 
-from all files in the separately supplied data archive up to and 
-including 00.english.0341). This model can be downloaded from:
+Each tree is stored as a dictionary. A sample tree and the corresponding stored dictionary is shown below:
 
- http://derczynski.com/sheffield/resources/boot00.5K.0341.model
+![Tree-Example](Tree-Ex.png?raw=true "Tree_Example") 
 
-This should be run against the "ritter_dev.nolabels" file and compared
-to "ritter_dev.stanford" to re-produce the result in Section 5.
+```
+tree = {
+        'f': [0.234, .... , ], 'l': [0, 1], 'c': [
+            {'f': [0.109, ... , ], 'l': [0, 1], 'c': []},
+            {'f': [0.712, ... , ], 'l': [0, 1], 'c': [
+                {'f': [0.352, ... , ], 'l': [0, 1], 'c': []}
+            ]},
+        ],
+    }
+```
 
+Here, f is the input feature vector for each node of the tree, l is the true label of the root of the tree stored as a 2-dimensional one-hot vector (dim-1: verified, dim-2: unverified), and c is the list of children of a node. 
+
+### Training and Testing Tree-LSTM
+
+Command:
+
+```
+$ python train-Tree-LSTM.py
+```
+
+Configure the following input variables inside the code:
+
+- **tree_path**: Path to the folder containing generate trees (output_path of the last step).
+- **IN_FEATURES**: Size of the input feature vectors
+- **NUM_ITERATIONS**: Number of iterations for training
+- **BATCH_SIZE**: Batch size for training
+- **test_set**: Disaster events on which you want to test.
+
+
+## VERISUMM
+
+Code coming up soon!!
